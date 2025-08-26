@@ -1,0 +1,57 @@
+{
+  "name": "Ploomes",
+  "prefix": "plm",
+  "uri": "http://ploomes.com/schema/bpmn",
+  "types": [
+    {
+      "name": "IntegrationTask",
+      "superClass": ["bpmn:Task"],
+      "properties": [
+        { "name": "systemA", "isAttr": true, "type": "String" },
+        { "name": "systemB", "isAttr": true, "type": "String" },
+        { "name": "direction", "isAttr": true, "type": "String" },
+        { "name": "fieldMappings", "isAttr": false, "type": "String" }
+      ]
+    },
+    {
+      "name": "ApplicationTask",
+      "superClass": ["bpmn:Task"],
+      "properties": [
+        { "name": "description", "isAttr": false, "type": "String" },
+        { "name": "acceptanceCriteria", "isAttr": false, "type": "String" }
+      ]
+    },
+    {
+      "name": "AutomationTask",
+      "superClass": ["bpmn:Task"],
+      "properties": [
+        { "name": "description", "isAttr": false, "type": "String" },
+        { "name": "entity", "isAttr": true, "type": "String" },
+        { "name": "trigger", "isAttr": false, "type": "String" },
+        { "name": "filter", "isAttr": false, "type": "String" },
+        { "name": "action", "isAttr": false, "type": "String" }
+      ]
+    },
+    {
+      "name": "FunnelSubProcess",
+      "superClass": ["bpmn:SubProcess"],
+      "properties": [
+        { "name": "funnelName", "isAttr": true, "type": "String" },
+        { "name": "stagesCount", "isAttr": true, "type": "Integer" },
+        { "name": "stages", "isAttr": false, "type": "String" },
+        { "name": "linkedParticipantId", "isAttr": true, "type": "String" }
+      ]
+    },
+    {
+      "name": "ApprovalTask",
+      "superClass": ["bpmn:Task"],
+      "properties": [
+        { "name": "description", "isAttr": false, "type": "String" },
+        { "name": "entity", "isAttr": true, "type": "String" },
+        { "name": "field", "isAttr": true, "type": "String" },
+        { "name": "operator", "isAttr": true, "type": "String" },
+        { "name": "approvers", "isAttr": false, "type": "String" }
+      ]
+    }
+  ]
+}

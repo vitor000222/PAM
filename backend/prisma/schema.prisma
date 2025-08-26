@@ -1,0 +1,413 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model conta {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome      String
+  criado_em DateTime           @default(now()) @db.Timestamptz(6)
+  caixas    caixa_mapeamento[]
+  clientes  cliente[]
+  projetos  projeto[]
+  usuarios  usuario[]
+}
+
+model usuario {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conta_id             String             @db.Uuid
+  email                String             @unique
+  nome                 String
+  cargo                String?
+  criado_em            DateTime           @default(now()) @db.Timestamptz(6)
+  caixa_mapeamento     caixa_mapeamento[]
+  diagramas_criados    diagrama[]
+  feedbacks            feedback[]
+  mapeamentos_criados  mapeamento[]
+  anexos_criados       mapeamento_anexo[]
+  projetos_gerenciados projeto[]          @relation("ProjetoGerente")
+  time_projeto         time_projeto[]
+  conta                conta              @relation(fields: [conta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model cliente {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conta_id  String    @db.Uuid
+  nome      String
+  moc       String?
+  criado_em DateTime  @default(now()) @db.Timestamptz(6)
+  segmento  String?
+  cnpj      String?
+  conta     conta     @relation(fields: [conta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  projetos  projeto[]
+
+  @@index([conta_id], map: "idx_cliente_conta")
+}
+
+model moc {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo    String?   @unique
+  nome      String    @unique
+  ativo     Boolean   @default(true)
+  criado_em DateTime  @default(now()) @db.Timestamptz(6)
+  projetos  projeto[]
+}
+
+model projeto {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cliente_id       String             @db.Uuid
+  conta_id         String             @db.Uuid
+  nome             String
+  gerente_id       String?            @db.Uuid
+  criado_em        DateTime           @default(now()) @db.Timestamptz(6)
+  status           ProjetoStatus      @default(NOVO)
+  estagio          ProjetoEstagio     @default(NOVO)
+  moc_id           String?            @db.Uuid
+  documentos_fonte documento_fonte[]
+  entrevistas      entrevista_fonte[]
+  escopos          escopo[]
+  exemplos_treino  exemplo_treino[]
+  mapeamentos      mapeamento[]
+  cliente          cliente            @relation(fields: [cliente_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  conta            conta              @relation(fields: [conta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  gerente          usuario?           @relation("ProjetoGerente", fields: [gerente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  moc              moc?               @relation(fields: [moc_id], references: [id], onUpdate: NoAction)
+  tarefas_n8n      tarefa_n8n[]
+  time_projeto     time_projeto[]
+  transcricoes     transcricao[]
+
+  @@index([cliente_id], map: "idx_projeto_cliente")
+}
+
+model documento_fonte {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projeto_id    String   @db.Uuid
+  tipo          String
+  nome_exibicao String
+  arquivo_url   String
+  extra         Json?
+  criado_em     DateTime @default(now()) @db.Timestamptz(6)
+  projeto       projeto  @relation(fields: [projeto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([projeto_id], map: "idx_doc_fonte_projeto")
+}
+
+model transcricao {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projeto_id    String             @db.Uuid
+  idioma        String?            @default("pt-BR")
+  texto         String
+  fonte_info    Json?
+  criado_em     DateTime           @default(now()) @db.Timestamptz(6)
+  mapeamento_id String?            @db.Uuid
+  entrevistas   entrevista_fonte[]
+  mapeamento    mapeamento?        @relation(fields: [mapeamento_id], references: [id], onUpdate: NoAction)
+  projeto       projeto            @relation(fields: [projeto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([mapeamento_id], map: "idx_transcricao_map")
+  @@index([projeto_id], map: "idx_transcricao_projeto")
+}
+
+model escopo {
+  id                     String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projeto_id             String       @db.Uuid
+  referencia_vendas      String?
+  texto                  String
+  anexos                 Json?
+  criado_em              DateTime     @default(now()) @db.Timestamptz(6)
+  mapeamento_id          String?      @db.Uuid
+  mapeamento_relacionado mapeamento?  @relation("EscopoToMapeamento", fields: [mapeamento_id], references: [id], onUpdate: NoAction)
+  projeto                projeto      @relation(fields: [projeto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mapeamentos_base       mapeamento[] @relation("MapeamentoToEscopo")
+
+  @@index([mapeamento_id], map: "idx_escopo_map")
+}
+
+model entrevista_fonte {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projeto_id     String       @db.Uuid
+  transcricao_id String?      @db.Uuid
+  meta           Json?
+  criado_em      DateTime     @default(now()) @db.Timestamptz(6)
+  mapeamento_id  String?      @db.Uuid
+  mapeamento     mapeamento?  @relation(fields: [mapeamento_id], references: [id], onUpdate: NoAction)
+  projeto        projeto      @relation(fields: [projeto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transcricao    transcricao? @relation(fields: [transcricao_id], references: [id], onUpdate: NoAction)
+
+  @@index([mapeamento_id], map: "idx_entrevista_fonte_map")
+}
+
+model exemplo_treino {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projeto_id              String    @db.Uuid
+  fonte                   Json
+  alvo                    Json
+  derivado_de_feedback_id String?   @db.Uuid
+  criado_em               DateTime  @default(now()) @db.Timestamptz(6)
+  derivado_de_feedback    feedback? @relation(fields: [derivado_de_feedback_id], references: [id], onUpdate: NoAction)
+  projeto                 projeto   @relation(fields: [projeto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model time_projeto {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projeto_id   String             @db.Uuid
+  usuario_id   String             @db.Uuid
+  papel        time_projeto_papel
+  atribuido_em DateTime           @default(now()) @db.Timestamptz(6)
+  projeto      projeto            @relation(fields: [projeto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuario      usuario            @relation(fields: [usuario_id], references: [id], onUpdate: NoAction)
+
+  @@unique([projeto_id, papel])
+  @@index([projeto_id], map: "idx_time_projeto")
+}
+
+model caixa_mapeamento {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conta_id    String       @db.Uuid
+  nome        String
+  criado_por  String?      @db.Uuid
+  criado_em   DateTime     @default(now()) @db.Timestamptz(6)
+  conta       conta        @relation(fields: [conta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuario     usuario?     @relation(fields: [criado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mapeamentos mapeamento[]
+
+  @@unique([conta_id, nome])
+}
+
+model mapeamento {
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projeto_id          String?            @db.Uuid
+  caixa_mapeamento_id String?            @db.Uuid
+  tipo                MapeamentoTipo
+  base_as_is_id       String?            @db.Uuid
+  escopo_id           String?            @db.Uuid
+  status              MapeamentoStatus   @default(NOVO)
+  notas               String?
+  criado_por          String             @db.Uuid
+  criado_em           DateTime           @default(now()) @db.Timestamptz(6)
+  diagramas           diagrama[]
+  entrevistas         entrevista_fonte[]
+  escopos_vinculados  escopo[]           @relation("EscopoToMapeamento")
+  base_as_is          mapeamento?        @relation("MapeamentoBase", fields: [base_as_is_id], references: [id], onUpdate: NoAction)
+  base_as_is_de       mapeamento[]       @relation("MapeamentoBase")
+  caixa_mapeamento    caixa_mapeamento?  @relation(fields: [caixa_mapeamento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  autor               usuario            @relation(fields: [criado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  escopo_relacionado  escopo?            @relation("MapeamentoToEscopo", fields: [escopo_id], references: [id], onUpdate: NoAction)
+  projeto             projeto?           @relation(fields: [projeto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  anexos              mapeamento_anexo[]
+  itens               mapeamento_item[]
+  tarefas_n8n         tarefa_n8n[]
+  transcricoes        transcricao[]
+
+  @@index([projeto_id], map: "idx_mapeamento_projeto")
+}
+
+model diagrama {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mapeamento_id   String              @db.Uuid
+  versao          Int                 @default(1)
+  nome            String              @default("Process_Default")
+  bpmn_xml        String
+  snapshot_url    String?
+  criado_por      String?             @db.Uuid
+  criado_em       DateTime            @default(now()) @db.Timestamptz(6)
+  autor           usuario?            @relation(fields: [criado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mapeamento      mapeamento          @relation(fields: [mapeamento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  elementos       elemento_diagrama[]
+  feedbacks       feedback[]
+  mapeamento_item mapeamento_item[]
+
+  @@unique([mapeamento_id, versao])
+  @@index([mapeamento_id], map: "idx_diagrama_mapeamento")
+}
+
+model elemento_diagrama {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diagrama_id String   @db.Uuid
+  elemento_id String
+  bpmn_tipo   String
+  nome        String?
+  props       Json     @default("{}")
+  diagrama    diagrama @relation(fields: [diagrama_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([diagrama_id, elemento_id])
+  @@index([diagrama_id], map: "idx_elemento_diagrama")
+}
+
+model feedback {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diagrama_id    String           @db.Uuid
+  elemento_id    String?
+  autor_id       String?          @db.Uuid
+  tipo           String
+  payload        Json
+  criado_em      DateTime         @default(now()) @db.Timestamptz(6)
+  exemplo_treino exemplo_treino[]
+  autor          usuario?         @relation(fields: [autor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  diagrama       diagrama         @relation(fields: [diagrama_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model mapeamento_item {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mapeamento_id String               @db.Uuid
+  diagrama_id   String               @db.Uuid
+  elemento_id   String
+  tipo          mapeamento_item_tipo
+  nome          String?
+  payload       Json                 @default("{}")
+  criado_em     DateTime             @default(now()) @db.Timestamptz(6)
+  diagrama      diagrama             @relation(fields: [diagrama_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mapeamento    mapeamento           @relation(fields: [mapeamento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([diagrama_id, elemento_id])
+  @@index([mapeamento_id], map: "idx_mi_mapeamento")
+  @@index([tipo], map: "idx_mi_tipo")
+}
+
+model mapeamento_anexo {
+  id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mapeamento_id String                @db.Uuid
+  tipo          mapeamento_anexo_tipo
+  nome_arquivo  String
+  content_type  String?
+  tamanho_bytes BigInt?
+  url           String
+  criado_em     DateTime              @default(now()) @db.Timestamptz(6)
+  criado_por    String?               @db.Uuid
+  autor         usuario?              @relation(fields: [criado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mapeamento    mapeamento            @relation(fields: [mapeamento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([mapeamento_id], map: "idx_mapeamento_anexo_mapeamento")
+}
+
+model tarefa_n8n {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projeto_id     String          @db.Uuid
+  mapeamento_id  String?         @db.Uuid
+  workflow_chave String
+  input          Json
+  output         Json?
+  status         TarefaN8nStatus @default(AGUARDANDO)
+  erro           String?
+  iniciado_em    DateTime?       @db.Timestamptz(6)
+  finalizado_em  DateTime?       @db.Timestamptz(6)
+  criado_em      DateTime        @default(now()) @db.Timestamptz(6)
+  mapeamento     mapeamento?     @relation(fields: [mapeamento_id], references: [id], onUpdate: NoAction)
+  projeto        projeto         @relation(fields: [projeto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([projeto_id], map: "idx_tarefa_n8n_projeto")
+}
+
+enum MapeamentoTipo {
+  AS_IS
+  TO_BE
+  AS_IS_VALIDADO @map("AS-IS VALIDADO")
+  TO_BE_HIFEN    @map("TO-BE")
+  TO_BE_VALIDADO @map("TO_BE VALIDADO")
+
+  @@map("mapeamento_tipo")
+}
+
+enum MapeamentoStatus {
+  draft
+  in_review
+  approved
+  NOVO      @map("novo")
+  FAZENDO   @map("fazendo")
+  CONCLUIDO @map("concluido")
+  CANCELADO @map("cancelado")
+
+  @@map("mapeamento_status")
+}
+
+enum ProjetoStatus {
+  draft
+  in_review
+  approved
+  archived
+  NOVO       @map("novo")
+  MAPEANDO   @map("mapeando")
+  FINALIZADO @map("finalizado")
+  CANCELADO  @map("cancelado")
+
+  @@map("projeto_status")
+}
+
+enum ProjetoEstagio {
+  AS_IS
+  AS_IS_VALIDATED
+  TO_BE_INITIAL
+  TO_BE_REVISED
+  FINISHED
+  NOVO                       @map("novo")
+  MAPEANDO_AS_IS             @map("mapeando as-is")
+  AGUARDANDO_VALIDACAO_AS_IS @map("aguardando validacao as-is")
+  AS_IS_VALIDADO             @map("as-is validado")
+  MAPEANDO_TO_BE             @map("mapeando to-be")
+  AGUARDANDO_VALIDACAO_TO_BE @map("aguardando validacao to-be")
+  TO_BE_VALIDADO             @map("to-be validado")
+
+  @@map("projeto_estagio")
+}
+
+enum TarefaN8nStatus {
+  queued
+  running
+  succeeded
+  failed
+  AGUARDANDO @map("aguardando")
+  GERANDO    @map("gerando")
+  CONCLUIDO  @map("concluido")
+  ERRO       @map("erro")
+
+  @@map("tarefa_n8n_status")
+}
+
+enum anexo_tipo {
+  ASIS_TRANSCRICAO
+  TOBE_ESCOPO
+  ASIS_XML
+  ENTREVISTA_FONTE
+  OUTRO
+}
+
+enum mapeamento_anexo_tipo {
+  escopo
+  transcricao
+  xmlasis
+  outro
+}
+
+enum mapeamento_item_tipo {
+  automation
+  integration
+  application
+  approval
+  funnel
+  automacao
+  integracao
+  aplicacao
+  funil
+  aprovacao
+  tarefa_de_usuario @map("tarefa de usuario")
+}
+
+enum time_papel {
+  architect_solution
+  architect_cpq
+  architect_business
+  project_manager
+}
+
+enum time_projeto_papel {
+  gerente_de_projeto    @map("gerente de projeto")
+  analista_de_processos @map("analista de processos")
+  arquiteto_de_solucao  @map("arquiteto de solucao")
+  arquiteto_de_cpq      @map("arquiteto de cpq")
+  funcional
+  logicas_avancadas     @map("logicas avancadas")
+}

@@ -1,0 +1,19 @@
+{
+  "nome": "Process_Default",
+  "versao": 1,
+  "bpmnXml": "<?xml version='1.0' encoding='UTF-8'?><definitions xmlns='http://www.omg.org/spec/BPMN/20100524/MODEL' xmlns:bpmndi='http://www.omg.org/spec/BPMN/20100524/DI' xmlns:dc='http://www.omg.org/spec/DD/20100524/DC' xmlns:di='http://www.omg.org/spec/DD/20100524/DI' id='Defs_1'><process id='Process_1' isExecutable='false'><startEvent id='StartEvent_1'/><task id='Task_Auto1' name='Automação'/><endEvent id='End_1'/></process></definitions>",
+  "elementos": [
+    {
+      "elementoId": "Task_Auto1",
+      "bpmnTipo": "plm:AutomationTask",
+      "nome": "Automação de Leads",
+      "props": {
+        "descricao": "Mover lead para etapa X",
+        "entidade": "Lead",
+        "gatilho": "Ao criar",
+        "filtro": "status=novo",
+        "acao": "Mover etapa"
+      }
+    }
+  ]
+}
